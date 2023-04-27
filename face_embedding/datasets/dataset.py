@@ -76,6 +76,7 @@ class FaceImageFolderDataset(FaceDataset):
         self.img_paths = []
         self.img_ids = []
         self.img_id_labels = []
+        self.label_map={}
 
         if auto_initialize:
             self.init_from_directories()
@@ -92,13 +93,14 @@ class FaceImageFolderDataset(FaceDataset):
 
         for label, identity in enumerate(os.listdir(images_dir)):
             id_path = os.path.join(images_dir, identity)
-
+            self.label_map[label]=identity
             for img_file in os.listdir(id_path):
                 self.img_paths.append(os.path.join(id_path, img_file))
                 self.img_ids.append(identity)
                 self.img_id_labels.append(label)
 
-
+    def get_label_map(self):
+        return self.label_map
     def dataset_exists(self):
         images_dir = os.path.join(self.root)
         return os.path.isdir(images_dir) and len(os.listdir(images_dir)) > 0

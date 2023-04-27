@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-sys.path.insert(0, "model")
+sys.path.insert(0, "models")
 import iresnet
 
 from collections import OrderedDict
