@@ -1,0 +1,1 @@
+!python embdded_feat.py --backbone iresnet18 --folderdataset_dir datasets/preprocessed --feat_list datasets/preprocessed/face_embdding.txt
