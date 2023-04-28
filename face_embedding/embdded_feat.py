@@ -7,7 +7,7 @@ import torchvision
 
 from torch.utils.data import DataLoader
 
-from datasets import dataset
+import dataset
 from models.model import *
 
 warnings.filterwarnings("ignore")
@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser()
 parser.add_argument('--backbone', default='iresnet18', type=str,
                     help='backbone architechture')
-parser.add_argument('--pretrained_backbone', default=False, type=str,
+parser.add_argument('--pretrained_backbone', default=False, type=bool,
                     help='Use pretrain backbone')
 parser.add_argument('--resume', default=None, type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -23,9 +23,9 @@ parser.add_argument('--folderdataset_dir', default='datasets/raw', type=str,
                     help='Path to Face Image Folder Dataset')
 parser.add_argument('--feat_list', default='datasets/face_embdding.txt', type=str,
                     help='Path for saveing features file')
-parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
+parser.add_argument('-j', '--workers', default=0, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('-b', '--batch-size', default=256, type=int, metavar='N',
+parser.add_argument('-b', '--batch-size', default=1, type=int, metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                     'batch size of all GPUs on the current node when '
                     'using Data Parallel or Distributed Data Parallel')
@@ -36,15 +36,10 @@ parser.add_argument('--cpu-mode', action='store_true', help='Use the CPU.')
 args=parser.parse_args()
 
 def main(args):
+    device=torch.device("cuda" if (not args.cpu_mode) &(torch.cuda.is_available()) else "cpu") 
+    
+    model= build_backbone(args).to(device)
     torch.cuda.empty_cache()
-    model= build_backbone(args)
-
-    if not args.cpu_mode:
-        model = model.cuda()
-        device="cuda"
-    else:
-        device="cpu"
-
     transform = torchvision.transforms.Compose([
         torchvision.transforms.Resize((112, 112)),
         torchvision.transforms.ToTensor(),

@@ -3,19 +3,39 @@ import time
 from pathlib import Path
 import sys
 import os
-
+import json
 import numpy as np
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+from torchvision import transforms
 from numpy import random
 import copy
 from sklearn.svm import SVC
 
 from face_embedding.models.model import *
 
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]  # YOLOv5 root directory
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))  # add ROOT to PATH
+ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--weights', nargs='+', type=str, default='runs/train/exp5/weights/last.pt', help='model.pt path(s)')
+parser.add_argument('--weights', nargs='+', type=str, default='weights/yolov5n-face.pt', help='model.pt path(s)')
+parser.add_argument('--backbone', default='iresnet18', type=str,
+                    help='backbone architechture')
+parser.add_argument('--pretrained_backbone', default=False, type=str,
+                    help='Use pretrain backbone')
+parser.add_argument('--resume', default=None, type=str, metavar='PATH',
+                    help='path to latest checkpoint (default: none)')
+parser.add_argument('--feat_list', default='data_recognition/preprocessed/face_embdding.txt', type=str,
+                    help='Path for saving features file')
+parser.add_argument('--label_map', default='data_recognition/preprocessed/label_map.json', type=str,
+                    help='Path for saving label dictionary file')
+parser.add_argument('--embedding-size', default=512, type=int,
+                    help='The embedding feature size')
+
 parser.add_argument('--source', type=str, default='0', help='source')  # file/folder, 0 for webcam
 parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
 parser.add_argument('--project', default=ROOT / 'runs/detect', help='save results to project/name')
@@ -24,21 +44,8 @@ parser.add_argument('--exist-ok', action='store_true', help='existing project/na
 parser.add_argument('--save-img', action='store_true', help='save results')
 parser.add_argument('--view-img', action='store_true', help='show results')
 parser.add_argument('--cpu-mode', action='store_true', help='Use the CPU.')    
-parser.add_argument('--weights', nargs='+', type=str, default='runs/train/exp5/weights/last.pt', help='model.pt path(s)')
-parser.add_argument('--source', type=str, default='0', help='source')  # file/folder, 0 for webcam
-parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
-parser.add_argument('--project', default=ROOT / 'runs/detect', help='save results to project/name')
-parser.add_argument('--name', default='exp', help='save results to project/name')
-parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-parser.add_argument('--save-img', action='store_true', help='save results')
-parser.add_argument('--view-img', action='store_true', help='show results')
 args = parser.parse_args()
 
-FILE = Path(__file__).resolve()
-ROOT = FILE.parents[0]  # YOLOv5 root directory
-if str(ROOT) not in sys.path:
-    sys.path.append(str(ROOT))  # add ROOT to PATH
-ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 from models.experimental import attempt_load
 from utils.datasets import letterbox, img_formats, vid_formats, LoadImages, LoadStreams
@@ -94,7 +101,7 @@ def show_results(img, xyxy, conf, identify):
 
     tf = max(tl - 1, 1)  # font thickness
     conf = str(conf)[:5]
-    cv2.putText(img, identify, (x1 + 30, y1 - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+    cv2.putText(img, str(identify), (x1 + 30, y1 - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
     cv2.putText(img, conf, (x1, y1 - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
     return img
 
@@ -187,12 +194,12 @@ def process(
             # print(det)
             if len(det):
                 # Rescale boxes from img_size to im0 size
-                print('previos', det[:, :4])
+                #print('previos', det[:, :4])
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
                 # print(det[:, :4])
                 # Print results
                
-                print('after', det[:, : 4])
+                #print('after', det[:, : 4])
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                 # print(det[:, :4])
@@ -201,22 +208,25 @@ def process(
                 transform = transforms.Compose([
 			        transforms.ToPILImage(),  # Chuyển đổi ảnh thành đối tượng PIL Image
 			        transforms.Resize((112, 112)), 
-			        transforms.ToTensor(), 
-			        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))  # Chuẩn hóa giá trị pixel
+			        transforms.ToTensor(),  # Chuẩn hóa giá trị pixel
 			    ])
                 for j in range(det.size()[0]):
                     xyxy = det[j, :4].view(-1).tolist()
-                    x1,x2,y1,y2= xyxy
+                    x1,y1,x2,y2= xyxy
                     #crop face 
-                    face = cv2.cvtColor(im0[y1:y2,x1:x2], cv2.COLOR_BGR2RGB)
-                    face=transform(face).unsqueeze(0).to(device)
+                    #face = cv2.cvtColor(im0[int(y1):int(y2),int(x1):int(x2)], cv2.COLOR_BGR2RGB)
+                    face = im0[int(y1):int(y2),int(x1):int(x2)]
+                    face = transform(face).unsqueeze(0).to(device)
                     _emb_feat = embd_model(face)
-                    _emb_feat= _emb_feat.squeeze().data.cpu().numpy()
-
-					_pred = clf.predict_proba(_emb_feat.reshape(1,-1))
-					_label = np.argmax(_pred, axis=1)
-                    _iden=label_map[str(_label[0])]
-                    im0 = show_results(im0, xyxy, max(_pred) , _iden)
+                    _emb_feat = _emb_feat.squeeze().data.cpu().numpy()
+                    _pred = clf.predict_proba(_emb_feat.reshape(1,-1))
+                    _label = np.argmax(_pred, axis=1)
+                    if label_map is None:
+                        _iden= _label
+                    else:
+                        _iden =label_map[str(_label[0])]
+                        
+                    im0 = show_results(im0, xyxy, np.max(_pred, axis=1)[0] , _iden)
             
             if view_img:
                 cv2.imshow('result', im0)
@@ -258,16 +268,18 @@ def get_embdding_feature(args):
 if __name__ == '__main__':
     args = parser.parse_args()
     try:
-	    with open(args.label_map, 'r') as f:
-	        label_map= json.load(f)
-	except:
-    	label_map=None
+        with open(args.label_map, 'r') as f:
+            label_map= json.load(f)
+    except:
+        label_map=None
 
-	feat, label= get_embdding_feature(args)
-	clf= SVC(kernel='linear', probability=True)
-	clf.fit(feat, label)
-    device = torch.device("cuda" if (not args.cpu_mode) & (torch.cuda.is_available()): else "cpu")
+
+    feat, label= get_embdding_feature(args)
+    clf= SVC(kernel='linear', probability=True)
+    clf.fit(feat, label)
+    device=torch.device("cuda" if (not args.cpu_mode) &(torch.cuda.is_available()) else "cpu") 
     detect_model = load_model(args.weights, device)
 
-    embd_model= build_backbone(args)
+    embd_model= build_backbone(args).to(device)
+    embd_model.eval()
     process(detect_model, embd_model, clf, args.source, device, args.project, args.name, label_map, args.exist_ok, args.save_img, args.view_img)

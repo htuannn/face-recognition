@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import sys
 sys.path.append("..")
-from datasets import dataset
-from model import magface
+import dataset
+from models import model as md
 from utils import utils
 import numpy as np
 from collections import OrderedDict
@@ -31,8 +31,10 @@ cprint('=> parse the args ...', 'green')
 parser = argparse.ArgumentParser(description='Trainer for Magface')
 parser.add_argument('--backbone', default='iresnet18', type=str,
                     help='backbone architechture')
-parser.add_argument('--pretrained_backbone', default='True', type=str,
+parser.add_argument('--pretrained_backbone', default=False, type=str,
                     help='Use pretrain backbone')
+parser.add_argument('--resume', default=None, type=str, metavar='PATH',
+                    help='path to latest checkpoint (default: none)')
 parser.add_argument('--folderdataset_dir', default='', type=str,
                     help='Path to Face Image Folder Dataset')
 parser.add_argument('--train_list', default='', type=str,
@@ -69,7 +71,7 @@ parser.add_argument('--lr-drop-ratio', default=0.1, type=float,
 parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 
-parser.add_argument('--pth-save-fold', default='tmp', type=str,
+parser.add_argument('--pth-save-fold', default='face_embedding/tmp', type=str,
                     help='The folder to save pths')
 parser.add_argument('--pth-save-epoch', default=1, type=int,
                     help='The epoch to save pth')
@@ -114,7 +116,7 @@ def main_worker(ngpus_per_node, args):
     global best_acc1
 
     cprint('=> modeling the network ...', 'green')
-    model = magface.builder(args)
+    model = md.builder(args)
     if ngpus_per_node>1:
         model = torch.nn.DataParallel(model).cuda()
     else: 
@@ -134,7 +136,7 @@ def main_worker(ngpus_per_node, args):
     train_loader = dataset.train_loader(args)
     
     cprint('=> building the criterion ...', 'green')
-    criterion = magface.MagLoss(
+    criterion = md.MagLoss(
         args.l_a, args.u_a, args.l_margin, args.u_margin)
 
     global iters

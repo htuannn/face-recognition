@@ -110,7 +110,6 @@ def train_loader(args):
         transform = torchvision.transforms.Compose([
             torchvision.transforms.Resize((112, 112)),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)),
             torchvision.transforms.RandomHorizontalFlip()
         ])
         train_dataset = FaceImageFolderDataset(

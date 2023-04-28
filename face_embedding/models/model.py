@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import sys
-sys.path.insert(0, "models")
+import os
+
+file_path = os.path.abspath(os.path.dirname(__file__))
+sys.path.append(file_path)
 import iresnet
 
 from collections import OrderedDict
@@ -13,7 +16,6 @@ import math
 import torch
 import torchvision
 import torch.nn as nn
-import os
 
 
 def builder(args):
