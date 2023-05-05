@@ -11,7 +11,8 @@ import torch.backends.cudnn as cudnn
 from torchvision import transforms
 from numpy import random
 import copy
-from sklearn.svm import SVC
+
+from collections import Counter
 
 from face_embedding.models.model import *
 
@@ -109,11 +110,11 @@ def show_results(img, xyxy, conf, identify):
 def process(
     detect_model,
     embd_model,
-    clf,
     source,
     device,
     project,
     name,
+    feat_list,
     label_map,
     exist_ok,
     save_img,
@@ -151,7 +152,7 @@ def process(
         else:
             orgimg = im.transpose(1, 2, 0)
         
-        orgimg = cv2.cvtColor(orgimg, cv2.COLOR_BGR2RGB)
+        orgimg = cv2.cvtColor(cv2.flip(orgimg,1), cv2.COLOR_BGR2RGB)
         img0 = copy.deepcopy(orgimg)
         h0, w0 = orgimg.shape[:2]  # orig hw
         r = img_size / max(h0, w0)  # resize image to img_size
@@ -188,7 +189,7 @@ def process(
                 p, im0, frame = path[i], im0s[i].copy(), dataset.count
             else:
                 p, im0, frame = path, im0s.copy(), getattr(dataset, 'frame', 0)
-            
+            im0=cv2.flip(im0,1)
             p = Path(p)  # to Path
             save_path = str(Path(save_dir) / p.name)  # im.jpg
             # print(det)
@@ -216,17 +217,18 @@ def process(
                     #crop face 
                     #face = cv2.cvtColor(im0[int(y1):int(y2),int(x1):int(x2)], cv2.COLOR_BGR2RGB)
                     face = im0[int(y1):int(y2),int(x1):int(x2)]
+                    face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                     face = transform(face).unsqueeze(0).to(device)
                     _emb_feat = embd_model(face)
                     _emb_feat = _emb_feat.squeeze().data.cpu().numpy()
-                    _pred = clf.predict_proba(_emb_feat.reshape(1,-1))
-                    _label = np.argmax(_pred, axis=1)
+                    _label, _dict=majority_vote_simmilar(args, _emb_feat, feat_list, label, 1)
+
                     if label_map is None:
                         _iden= _label
                     else:
-                        _iden =label_map[str(_label[0])]
+                        _iden =label_map[str(_label)]
                         
-                    im0 = show_results(im0, xyxy, np.max(_pred, axis=1)[0] , _iden)
+                    im0 = show_results(im0, xyxy, _dict , _iden)
             
             if view_img:
                 cv2.imshow('result', im0)
@@ -261,9 +263,34 @@ def get_embdding_feature(args):
         for line in file.split('\n')[:-1]:
             arr=line.split()
             label.append(arr[0])
-            feat.append(np.array(arr[1:]))
+            feat.append(np.array(arr[1:]).astype('float64'))
             
     return np.array(feat), np.array(label)
+
+def cosine_similarity(args, face1_feat, face2_feat):
+    # Compute the cosine similarity
+    face1_feat= torch.tensor(face1_feat).float().to(args.device)
+    face2_feat= torch.tensor(face2_feat).float().to(args.device)
+    dot = torch.dot(face1_feat, face2_feat)
+    norma = torch.linalg.norm(face1_feat)
+    normb = torch.linalg.norm(face2_feat)
+    cos = dot / (norma * normb)
+    return cos.cpu().numpy()
+
+def majority_vote_simmilar(args, _feat, feat_list, labels, k):
+    # Compute cosine similarity between each training and test data points
+    similarities = np.apply_along_axis(lambda x: cosine_similarity(args, _feat, x), 1, feat_list)
+    #print(similarities)
+    # Get indices of k nearest neighbors for each test data point
+    k_indices = np.apply_along_axis(lambda x: np.argsort(x)[-k:], 0, similarities)
+    
+    # Get labels of k nearest neighbors for each test data point
+    k_labels = np.apply_along_axis(lambda x: labels[x], 0, k_indices)
+
+    _pred = np.apply_along_axis(lambda x: Counter(x).most_common(1)[0][0], 0, k_labels)
+    _distance= np.apply_along_axis(lambda x: np.sort(x)[-k:], 0, similarities)[k_labels == _pred]
+
+    return _pred, sum(_distance)/len(_distance)
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -275,11 +302,13 @@ if __name__ == '__main__':
 
 
     feat, label= get_embdding_feature(args)
-    clf= SVC(kernel='linear', probability=True)
-    clf.fit(feat, label)
-    device=torch.device("cuda" if (not args.cpu_mode) &(torch.cuda.is_available()) else "cpu") 
-    detect_model = load_model(args.weights, device)
+    #clf= SVC(kernel='linear', probability=True, C=1.)
 
-    embd_model= build_backbone(args).to(device)
+    args.device=torch.device("cuda" if (not args.cpu_mode) &(torch.cuda.is_available()) else "cpu") 
+
+    detect_model = load_model(args.weights, args.device)
+
+
+    embd_model= load_dict_inf(args, build_backbone(args).to(args.device))
     embd_model.eval()
-    process(detect_model, embd_model, clf, args.source, device, args.project, args.name, label_map, args.exist_ok, args.save_img, args.view_img)
+    process(detect_model, embd_model, args.source, args.device, args.project, args.name, feat, label_map, args.exist_ok, args.save_img, args.view_img)

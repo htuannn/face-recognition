@@ -32,6 +32,9 @@ def build_backbone(args):
     if args.backbone == 'iresnet50':
         return iresnet.iresnet50(pretrained=args.pretrained_backbone,num_classes=args.embedding_size)
 
+    if args.backbone == 'iresnet100':
+        return iresnet.iresnet50(pretrained=args.pretrained_backbone,num_classes=args.embedding_size)
+
     if args.backbone == 'alexnet':
         backbone = torchvision.models.alexnet(pretrained=args.pretrained_backbone)
 
@@ -84,6 +87,7 @@ def load_dict_inf(args, model):
             checkpoint = torch.load(args.resume, map_location=torch.device("cpu"))
         else:
             checkpoint = torch.load(args.resume)
+
         _state_dict = clean_dict_inf(model, checkpoint['state_dict'])
         model_dict = model.state_dict()
         model_dict.update(_state_dict)
@@ -104,12 +108,13 @@ def clean_dict_inf(model, state_dict):
            v.size() == model.state_dict()[new_k].size():
             _state_dict[new_k] = v
         # assert k[0:1] == 'module.features.'
-        new_kk = '.'.join(k.split('.')[1:])
+        new_kk = '.'.join(k.split('.')[2:])
         if new_kk in model.state_dict().keys() and \
            v.size() == model.state_dict()[new_kk].size():
             _state_dict[new_kk] = v
     num_model = len(model.state_dict().keys())
     num_ckpt = len(_state_dict.keys())
+
     if num_model != num_ckpt:
         sys.exit("=> Not all weights loaded, model params: {}, loaded params: {}".format(
             num_model, num_ckpt))

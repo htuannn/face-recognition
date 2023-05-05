@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--weights', nargs='+', type=str, default='weights/yolov5n-face.pt', help='model.pt path(s)')
 parser.add_argument('--folderdataset_dir', default='data_recognition/raw', type=str,
                     help='Path to Face Image Folder Dataset')
-parser.add_argument('--save_path', default='data_recognition/preprocessced', type=str,
+parser.add_argument('--save_path', default='data_recognition/preprocessed', type=str,
                     help='Path for saving folder')
 parser.add_argument('--cpu-mode', action='store_true', help='Use the CPU.')
 parser.add_argument('--conf_thres', default=0.6, type=float,

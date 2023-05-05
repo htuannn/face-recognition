@@ -38,7 +38,7 @@ args=parser.parse_args()
 def main(args):
     device=torch.device("cuda" if (not args.cpu_mode) &(torch.cuda.is_available()) else "cpu") 
     
-    model= build_backbone(args).to(device)
+    embd_model= load_dict_inf(args, build_backbone(args).to(device))
     torch.cuda.empty_cache()
     transform = torchvision.transforms.Compose([
         torchvision.transforms.Resize((112, 112)),
@@ -64,13 +64,13 @@ def main(args):
     with open(label_map_path,'w') as f:
         json.dump(data_inf.get_label_map(), f)
         
-    model.eval()    
+    embd_model.eval()    
     file= open(args.feat_list, 'w')
 
     with torch.no_grad():
         for i, (imgs, labels) in enumerate(dataloader_inf):
             imgs=imgs.to(device)
-            embedding_feats = model(imgs)
+            embedding_feats = embd_model(imgs)
             embedding_feats = embedding_feats.data.cpu().numpy()
             
             for feat, label in zip(embedding_feats, labels):

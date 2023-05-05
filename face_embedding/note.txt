@@ -1,7 +1,14 @@
-python face_embedding/embdded_feat.py --backbone iresnet18 --resume face_embedding/tmp/00090.pth --folderdataset_dir data_recognition/preprocessed --feat_list  data_recognition/preprocessed/face_embdding.txt
-
-python Trainer.py --backbone iresnet 18 --pretrained_backbone False --folderdataset_dir data_recognition/preprocessed --last-fc-size 3 --workers 1
+Train:
 
 python face_embedding/Trainer.py --backbone iresnet18 --pretrained_backbone False --folderdataset_dir data_recognition/preprocessed --last-fc-size 3 --workers 1
 
-python rec_cam.py --backbone iresnet18 --resume face_embedding/tmp/00090.pth --view-img
+Crop face for data:
+python align_data.py 
+
+Extract feature:
+python face_embedding/embdded_feat.py --backbone iresnet50 --resume weights\models\magface_iresnet50_MS1MV2_dp.pth --folderdataset_dir data_recognition/preprocessed --feat_list  data_recognition/preprocessed/face_embdding.txt
+
+python face_embedding/embdded_feat.py --backbone iresnet50 --resume weights\models\magface_iresnet50_MS1MV2_dp.pth --folderdataset_dir data_recognition/preprocessed --feat_list  data_recognition/preprocessed/face_embdding.txt
+realtime:
+python rec_cam.py --backbone iresnet50 --resume weights\models\magface_iresnet50_MS1MV2_dp.pth --view-img
+python rec.py --backbone iresnet50 --resume weights\models\magface_iresnet50_MS1MV2_dp.pth --view-img

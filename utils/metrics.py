@@ -5,9 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
 from . import general
-
 
 def fitness(x):
     # Model fitness as a weighted combination of metrics
@@ -198,3 +196,5 @@ def plot_pr_curve(px, py, ap, save_dir='.', names=()):
     ax.set_ylim(0, 1)
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
     fig.savefig(Path(save_dir) / 'precision_recall_curve.png', dpi=250)
+
+
