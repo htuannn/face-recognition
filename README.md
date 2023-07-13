@@ -19,7 +19,8 @@ To measure the similarity between feature vectors, we employ the cosine similari
 In this equation, `A` and `B` are the feature vectors being compared. The cosine similarity value ranges from -1 to 1, where 1 indicates perfect similarity and -1 indicates complete dissimilarity.
 
 ### Loss Function
-We utilize the MagFace loss function, which is based on angular-margin-based classification. The MagFace loss function is described in the following paper: [Paper](https://arxiv.org/abs/2103.06627) [Code](https://github.com/IrvingMeng/MagFace). The MagFace loss can be represented as:
+We utilize the MagFace loss function, which is based on angular-margin-based classification. The MagFace loss function is described in the following paper: 
+
 + **MagFace Loss**: [Paper](https://arxiv.org/abs/2103.06627) [Code](https://github.com/IrvingMeng/MagFace) (MagFaceHeader: <img src="https://render.githubusercontent.com/render/math?math=\cos(\theta %2B f_m(x))">)
 
 ## Usage
