@@ -77,7 +77,7 @@ The processed images will be stored in the following path: `data_recognition/pre
 To convert the preprocessed face images into embedding vectors, run the following command:
 
 ```
-python face_embedding/embdded_feat.py --backbone iresnet50 --resume weights\models\magface_iresnet50_MS1MV2_dp.pth --folderdataset_dir data_recognition/preprocessed --feat_list  data_recognition/preprocessed/face_embdding.txt
+python face_embedding/embedding_feat.py --backbone iresnet50 --resume weights\models\magface_iresnet50_MS1MV2_dp.pth --folderdataset_dir data_recognition/preprocessed --feat_list  data_recognition/preprocessed/face_embdding.txt
 ```
 
 ### Real-time recognition inference
